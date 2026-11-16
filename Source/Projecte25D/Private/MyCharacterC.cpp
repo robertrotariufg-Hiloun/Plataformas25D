@@ -5,6 +5,7 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -47,6 +48,10 @@ void AMyCharacterC::BeginPlay()
 void AMyCharacterC::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (GetCharacterMovement()->IsFalling()== false)
+	{
+		Isjumping = false;
+	}
 
 }
 
@@ -61,15 +66,55 @@ void AMyCharacterC::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		return;
 	}
 	enhancedComponent->BindAction(moveAction, ETriggerEvent::Triggered, this, &AMyCharacterC::Move);
-	
+	enhancedComponent->BindAction(jumpAction, ETriggerEvent::Started, this, &AMyCharacterC::Jumping);
+	enhancedComponent->BindAction(moveAction, ETriggerEvent::Completed, this, &AMyCharacterC::StopMovement);
+	enhancedComponent->BindAction(punchAction, ETriggerEvent::Started, this, &AMyCharacterC::Punching);
+	enhancedComponent->BindAction(pauseAction, ETriggerEvent::Started, this, &AMyCharacterC::Pausing);
 
 }
 
 void AMyCharacterC::Move(const FInputActionValue& _value)
 {
-	float inputValue = _value.Get<float>();
-	AddMovementInput(FVector(inputValue,0,0));
+	horizontal = _value.Get<float>();
+	AddMovementInput(FVector(horizontal,0,0));
+	if (horizontal < 0 )
+	{
+		GetMesh()->SetRelativeRotation(FRotator(0,-270, 0));
+		
+	}
+	else if (horizontal > 0)
+	{
+		GetMesh()->SetRelativeRotation(FRotator(0,-90, 0));
+
+	}
 	
 	
 }
+
+void AMyCharacterC::Jumping(const FInputActionValue& _value)
+{
+	if (combo < 1 || Isjumping == false)
+	{
+		Jump();
+		Isjumping = true;
+	}
+}
+
+
+
+void AMyCharacterC::Punching(const FInputActionValue& _value)
+{
+	
+}
+
+void AMyCharacterC::Pausing(const FInputActionValue& _value)
+{
+	
+}
+
+void AMyCharacterC::StopMovement()
+{
+	horizontal = 0;
+}
+
 

@@ -28,6 +28,10 @@ protected:
 
 public:
 	
+	int combo;
+	bool Isjumping;
+	float horizontal;
+	
 	UPROPERTY(EditAnywhere,Category = Component)
 	UCameraComponent* Camera;
 	
@@ -37,6 +41,17 @@ public:
 	UPROPERTY(EditAnywhere,Category = Input)
 	UInputAction* moveAction;
 	
+	UPROPERTY(EditAnywhere,Category = Input)
+    	UInputAction* jumpAction;
+    
+    UPROPERTY(EditAnywhere,Category = Input)
+    	UInputAction* punchAction;
+    
+    UPROPERTY(EditAnywhere,Category = Input)
+    	UInputAction* pauseAction;
+    
+    
+	
 	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -45,5 +60,10 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
 	void Move ( const FInputActionValue& _value);
+	void Jumping ( const FInputActionValue& _value);
+	void Punching ( const FInputActionValue& _value);
+	void Pausing ( const FInputActionValue& _value);
+	void StopMovement ();
+
 	
 };
