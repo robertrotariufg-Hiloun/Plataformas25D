@@ -21,7 +21,10 @@ public:
 	
 	UPROPERTY(VisibleAnywhere,blueprintReadOnly)
 	float horizontal;
+	UPROPERTY(VisibleAnywhere,blueprintReadOnly)
 	bool jumping;
+	UPROPERTY(VisibleAnywhere,blueprintReadOnly)
+    bool death;
 	
 	virtual void NativeUpdateAnimation(float DeltaTime) override; // Update del blueprint anim
 	

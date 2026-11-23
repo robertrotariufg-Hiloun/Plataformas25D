@@ -14,6 +14,7 @@ void UMyAnimInstanceCPP::NativeUpdateAnimation(float DeltaTime)
 	{
 		horizontal = FMath:: Abs(prota->horizontal);
 		jumping = prota->Isjumping;
+		death = prota->Death;
 	}
 }
 

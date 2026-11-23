@@ -5,12 +5,12 @@
 
 AMyGameModeBaseCPP::AMyGameModeBaseCPP()
 {
-	
-	static ConstructorHelpers ::FClassFinder<APawn> PlayerPawn (TEXT("/Game/BluePrintCPP/BP_MyCharacter"));
-	
-	if (PlayerPawn.Class != NULL)
+	/*
+	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnClassFinder(TEXT("/Game/BluePrintCPP/BP_MyCharacter.BP_MyCharacter_C"));
+	if (PlayerPawnClassFinder.Succeeded() && PlayerPawnClassFinder.Class != nullptr)
 	{
-		DefaultPawnClass = PlayerPawn.Class;
-		
+		DefaultPawnClass = PlayerPawnClassFinder.Class;
 	}
+	*/
+	
 }

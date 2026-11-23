@@ -3,9 +3,13 @@
 
 #include "MyCharacterC.h"
 
+#include "EnemyControllerCPP.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "MyGameInstanceCPP.h"
+#include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "MyGameModeBaseCPP.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -17,6 +21,17 @@ AMyCharacterC::AMyCharacterC()
 	PrimaryActorTick.bCanEverTick = true;
 	Camera = CreateDefaultSubobject<UCameraComponent>("Camera");
 	Camera->SetupAttachment(RootComponent);
+	
+	punchLeftCollider = CreateDefaultSubobject<USphereComponent>("Left Punch");
+	punchRightCollider = CreateDefaultSubobject<USphereComponent>("Right Punch");
+	
+	const FAttachmentTransformRules attacmentRules = FAttachmentTransformRules(EAttachmentRule :: SnapToTarget, EAttachmentRule :: SnapToTarget, EAttachmentRule::KeepWorld, false);
+	
+	punchLeftCollider->AttachToComponent(GetMesh(), attacmentRules, "LeftHand");
+	punchRightCollider->AttachToComponent(GetMesh(), attacmentRules, "RightHand");
+	punchLeftCollider->SetSphereRadius(35);
+	punchRightCollider->SetSphereRadius(35);
+	
 }
 
 // Called when the game starts or when spawned
@@ -28,7 +43,7 @@ void AMyCharacterC::BeginPlay()
 	{
 		return;
 	}
-	
+	IsPunching = false;
 	UEnhancedInputLocalPlayerSubsystem* subsytem = 
 		ULocalPlayer :: GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(playerController->GetLocalPlayer());
 	
@@ -41,6 +56,12 @@ void AMyCharacterC::BeginPlay()
 	
 	//UE_Log(LogTemp, Log, TEXT("Antonio va a pescar")); Log consola
 	GEngine->AddOnScreenDebugMessage(-1,10.0f,FColor::Red, TEXT("Begin Player "));//Esto aparece en las builds
+	
+	if (IsValid(punchLeftCollider) && IsValid(punchRightCollider))
+	{
+		punchLeftCollider->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacterC::OnPunchBeginOverlap);
+		punchRightCollider->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacterC::OnPunchBeginOverlap);
+	}
 	
 }
 
@@ -75,28 +96,35 @@ void AMyCharacterC::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 void AMyCharacterC::Move(const FInputActionValue& _value)
 {
-	horizontal = _value.Get<float>();
-	AddMovementInput(FVector(horizontal,0,0));
-	if (horizontal < 0 )
+	if (combo >=1)
 	{
-		GetMesh()->SetRelativeRotation(FRotator(0,-270, 0));
-		
+		return;
 	}
-	else if (horizontal > 0)
-	{
-		GetMesh()->SetRelativeRotation(FRotator(0,-90, 0));
+		horizontal = _value.Get<float>();
+		AddMovementInput(FVector(horizontal,0,0));
+		if (horizontal < 0 )
+		{
+			GetMesh()->SetRelativeRotation(FRotator(0,-270, 0));
+			
+		}
+		else if (horizontal > 0)
+		{
+			GetMesh()->SetRelativeRotation(FRotator(0,-90, 0));
 
-	}
+		}
 	
 	
 }
 
 void AMyCharacterC::Jumping(const FInputActionValue& _value)
 {
-	if (combo < 1 || Isjumping == false)
+	if (Death==true)
 	{
-		Jump();
-		Isjumping = true;
+		if (combo < 1 || Isjumping == false)
+		{
+			Jump();
+			Isjumping = true;
+		}
 	}
 }
 
@@ -104,8 +132,68 @@ void AMyCharacterC::Jumping(const FInputActionValue& _value)
 
 void AMyCharacterC::Punching(const FInputActionValue& _value)
 {
-	
+	if (Death==true)
+	{
+		return;
+	}
+		if ( Isjumping == true || IsPunching == true )
+		{
+			return;
+		}
+		if (IsPunching == false)
+		{
+			combo +=1;
+
+		}
+		
+		if (combo == 1)
+		{
+			IsPunching = true;
+			PlayAnimMontage(punch1Montage);
+			GetWorld()->GetTimerManager().SetTimer(timer,this,
+				&AMyCharacterC::ContinueCombo,punch1Montage->GetPlayLength() );
+			
+			
+		}
+		
 }
+
+void AMyCharacterC::ContinueCombo()
+{
+	if (Death==true)
+	{
+		return;
+	}
+		switch ((combo))
+		{
+			case 1:
+				combo = 0;
+				IsPunching = false;
+				break;
+					
+			case 2:
+				IsPunching = true;
+				PlayAnimMontage(punch2Montage);
+				GetWorld()->GetTimerManager().SetTimer(timer,this,
+					&AMyCharacterC::ContinueCombo,punch2Montage->GetPlayLength() );
+				break;
+					
+			case 3:
+				IsPunching = true;
+				PlayAnimMontage(punch3Montage);
+				GetWorld()->GetTimerManager().SetTimer(timer,this,
+					&AMyCharacterC::ContinueCombo,punch3Montage->GetPlayLength() );
+				
+				break;
+					
+			default:
+				combo = 0;
+				IsPunching = false;	
+				break;
+		}
+}
+		
+
 
 void AMyCharacterC::Pausing(const FInputActionValue& _value)
 {
@@ -115,6 +203,69 @@ void AMyCharacterC::Pausing(const FInputActionValue& _value)
 void AMyCharacterC::StopMovement()
 {
 	horizontal = 0;
+}
+
+void AMyCharacterC::OnPunchBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* otherActor,
+	UPrimitiveComponent* otherOverlappedComponent, int otherBodyIndex, bool fromSweep, const FHitResult& sweepResult)
+{
+	
+	AEnemyControllerCPP* enemycontroller = Cast<AEnemyControllerCPP>(otherActor);
+	
+	if(IsValid(enemycontroller))
+	{
+		enemycontroller->TakeDamage(damage);
+	}
+	
+	
+}
+
+void AMyCharacterC::ActivateColliders()
+{
+	punchLeftCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	punchRightCollider->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+}
+
+void AMyCharacterC::DeactivateColliders()
+{
+	punchLeftCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	punchRightCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AMyCharacterC::TakeDamage(float _damage)
+{
+	
+	UMyGameInstanceCPP*  myGameInstance = Cast<UMyGameInstanceCPP>(GetGameInstance());
+	if (!IsValid(myGameInstance))
+	{
+		return;
+	}
+	myGameInstance->Health -= _damage;
+	
+	APlayerController* pc = Cast<APlayerController>(Controller);
+	
+	if (myGameInstance->Health <= 0)
+	{
+		//muerte
+		Death = true;
+	}
+	else
+	{
+		PlayAnimMontage(hitMontage);
+		GetWorld()->GetTimerManager().SetTimer(timer, this,&AMyCharacterC :: ReturnInput, hitMontage->GetPlayLength() );
+	}
+		//HACER LA UI Y QUE SE ACTUALIZE AL RECIBIR DAÑO 	
+	
+}
+
+void AMyCharacterC::ReturnInput()
+{
+	APlayerController* pc = Cast<APlayerController>(Controller);
+	EnableInput(pc);
+}
+
+void AMyCharacterC::ReturnCombo()
+{
+	
 }
 
 
