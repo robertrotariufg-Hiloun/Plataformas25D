@@ -14,6 +14,7 @@ class UCameraComponent;
 struct FInputActionValue;
 class UAnimMontage;
 class USphereComponent;
+class UMyUserWidgetCPP;
 
 UCLASS()// <-- se le llama Macro
 class PROJECTE25D_API AMyCharacterC : public ACharacter
@@ -37,6 +38,7 @@ public:
 	bool Death = false;
 	
 	FTimerHandle timer;
+	FTimerHandle timer1;
 	
 	
 	UPROPERTY(EditAnywhere,Category = Component)
@@ -77,6 +79,10 @@ public:
 		UAnimMontage* hitMontage;
 	
 
+	UPROPERTY(EditAnywhere,Category = UI)
+		UMyUserWidgetCPP* gameplayWidget;
+	UPROPERTY(EditAnywhere,Category = UI)
+		TSubclassOf<UMyUserWidgetCPP> myUserWidgetClass;
 		
 	
 	// Called every frame

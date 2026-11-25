@@ -10,7 +10,10 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "MyGameModeBaseCPP.h"
+#include "MyUserWidgetCPP.h"
+#include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
+
 
 
 
@@ -61,6 +64,17 @@ void AMyCharacterC::BeginPlay()
 	{
 		punchLeftCollider->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacterC::OnPunchBeginOverlap);
 		punchRightCollider->OnComponentBeginOverlap.AddDynamic(this, &AMyCharacterC::OnPunchBeginOverlap);
+	}
+	
+	gameplayWidget = CreateWidget<UMyUserWidgetCPP>(playerController, myUserWidgetClass);
+	
+	if (IsValid(gameplayWidget))
+	{
+		gameplayWidget->AddToViewport();
+		
+		GetWorld()->GetTimerManager().SetTimer(timer,gameplayWidget, &UMyUserWidgetCPP::UpdateLifeBar, 0.2f );
+		GetWorld()->GetTimerManager().SetTimer(timer1,gameplayWidget, &UMyUserWidgetCPP::UpdateCoinText, 0.2f );
+
 	}
 	
 }
@@ -240,6 +254,7 @@ void AMyCharacterC::TakeDamage(float _damage)
 		return;
 	}
 	myGameInstance->Health -= _damage;
+	gameplayWidget->UpdateLifeBar();
 	
 	APlayerController* pc = Cast<APlayerController>(Controller);
 	
