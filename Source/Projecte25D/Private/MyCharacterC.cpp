@@ -10,8 +10,10 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "MyGameModeBaseCPP.h"
+#include "MySoundManagerCPP.h"
 #include "MyUserWidgetCPP.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -42,6 +44,8 @@ void AMyCharacterC::BeginPlay()
 {
 	Super::BeginPlay();
 	APlayerController* playerController = Cast <APlayerController>(Controller);
+	UMySoundManagerCPP* audiomanager = GetGameInstance()->GetSubsystem<UMySoundManagerCPP>();
+
 	if (!IsValid(playerController))
 	{
 		return;
@@ -108,6 +112,7 @@ void AMyCharacterC::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 }
 
+#pragma region // === MOVE & JUMP ===
 void AMyCharacterC::Move(const FInputActionValue& _value)
 {
 	if (combo >=1)
@@ -132,93 +137,93 @@ void AMyCharacterC::Move(const FInputActionValue& _value)
 
 void AMyCharacterC::Jumping(const FInputActionValue& _value)
 {
-	if (Death==true)
-	{
-		if (combo < 1 || Isjumping == false)
-		{
-			Jump();
-			Isjumping = true;
-		}
-	}
-}
-
-
-
-void AMyCharacterC::Punching(const FInputActionValue& _value)
-{
-	if (Death==true)
+	if (Death|| IsPunching|| Isjumping)
 	{
 		return;
 	}
-		if ( Isjumping == true || IsPunching == true )
+		Jump();
+		Isjumping = true;
+			
+		UMySoundManagerCPP* audiomanager = GetGameInstance()->GetSubsystem<UMySoundManagerCPP>();
+	
+		if (!IsValid(audiomanager))
 		{
 			return;
 		}
-		if (IsPunching == false)
-		{
-			combo +=1;
+	
+		audiomanager->PlaySFX(jumpSFX);
 
-		}
+}
+#pragma endregion
+
+#pragma region //=== ATTACK ===
+void AMyCharacterC::Punching(const FInputActionValue& _value)
+{
+	if (Death==true || Isjumping == true) return;
+
+	if (IsPunching )
+	{
+		combo = FMath::Min(combo + 1, 3);
+
 		
-		if (combo == 1)
-		{
-			IsPunching = true;
-			PlayAnimMontage(punch1Montage);
-			GetWorld()->GetTimerManager().SetTimer(timer,this,
-				&AMyCharacterC::ContinueCombo,punch1Montage->GetPlayLength() );
-			
-			
-		}
+		return;
+	}
+
+	combo = 1;
+	currentstep = 1;
+	IsPunching = true;
+	PlayComboStep(1);
 		
+}
+void AMyCharacterC::PlayComboStep(int step)
+{
+	UAnimMontage* montage = nullptr;
+	
+	switch (step)
+	{
+	case 1:
+		montage = punch1Montage;
+		break;
+	case 2:
+		montage = punch2Montage;
+		break;
+	case 3:
+		montage = punch3Montage;
+		break;
+	default:
+		break;
+	}
+	if (!IsValid(montage))
+	{
+		combo = 0;
+		IsPunching = false;
+		currentstep = 0;
+		return;
+	}
+	PlayAnimMontage(montage);
+	GetWorld()->GetTimerManager().SetTimer(comboTimer, this,
+		&AMyCharacterC::ContinueCombo, montage->GetPlayLength());
+	
 }
 
 void AMyCharacterC::ContinueCombo()
 {
-	if (Death==true)
+	if (Death==true) return;
+
+	if (combo > currentstep)
 	{
-		return;
+		currentstep++;
+		PlayComboStep(currentstep);
 	}
-		switch ((combo))
-		{
-			case 1:
-				combo = 0;
-				IsPunching = false;
-				break;
-					
-			case 2:
-				IsPunching = true;
-				PlayAnimMontage(punch2Montage);
-				GetWorld()->GetTimerManager().SetTimer(timer,this,
-					&AMyCharacterC::ContinueCombo,punch2Montage->GetPlayLength() );
-				break;
-					
-			case 3:
-				IsPunching = true;
-				PlayAnimMontage(punch3Montage);
-				GetWorld()->GetTimerManager().SetTimer(timer,this,
-					&AMyCharacterC::ContinueCombo,punch3Montage->GetPlayLength() );
-				
-				break;
-					
-			default:
-				combo = 0;
-				IsPunching = false;	
-				break;
-		}
-}
-		
-
-
-void AMyCharacterC::Pausing(const FInputActionValue& _value)
-{
 	
+	else
+	{
+		combo = 0;
+		currentstep = 0;
+		IsPunching = false;
+	}
+		
 }
-
-void AMyCharacterC::StopMovement()
-{
-	horizontal = 0;
-}
-
 void AMyCharacterC::OnPunchBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* otherActor,
 	UPrimitiveComponent* otherOverlappedComponent, int otherBodyIndex, bool fromSweep, const FHitResult& sweepResult)
 {
@@ -245,6 +250,21 @@ void AMyCharacterC::DeactivateColliders()
 	punchRightCollider->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
+		
+#pragma endregion 
+
+void AMyCharacterC::Pausing(const FInputActionValue& _value)
+{
+	
+}
+
+void AMyCharacterC::StopMovement()
+{
+	horizontal = 0;
+}
+
+
+#pragma region // === TAKE DAMAGE ===
 void AMyCharacterC::TakeDamage(float _damage)
 {
 	
@@ -262,11 +282,13 @@ void AMyCharacterC::TakeDamage(float _damage)
 	{
 		//muerte
 		Death = true;
+		ReturnCombo();
 	}
 	else
 	{
+		ReturnCombo();
 		PlayAnimMontage(hitMontage);
-		GetWorld()->GetTimerManager().SetTimer(timer, this,&AMyCharacterC :: ReturnInput, hitMontage->GetPlayLength() );
+		GetWorld()->GetTimerManager().SetTimer(takeDamageTimer, this,&AMyCharacterC :: ReturnInput, hitMontage->GetPlayLength() );
 	}
 		//HACER LA UI Y QUE SE ACTUALIZE AL RECIBIR DAÑO 	
 	
@@ -280,7 +302,16 @@ void AMyCharacterC::ReturnInput()
 
 void AMyCharacterC::ReturnCombo()
 {
+	GetWorld()->GetTimerManager().ClearTimer(comboTimer);
+	combo = 0;
+	currentstep = 0;
+	IsPunching = false;
+	
+	DeactivateColliders();
 	
 }
+#pragma endregion
+
+
 
 

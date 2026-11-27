@@ -27,7 +27,7 @@ public:
 	
 	FTimerHandle timer;
 	bool IsPunching;
-
+	bool death;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		float damage;

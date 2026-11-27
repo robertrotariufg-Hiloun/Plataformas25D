@@ -32,6 +32,7 @@ protected:
 public:
 	
 	int combo;
+	int currentstep;
 	bool Isjumping;
 	float horizontal;
 	bool IsPunching;
@@ -39,6 +40,8 @@ public:
 	
 	FTimerHandle timer;
 	FTimerHandle timer1;
+	FTimerHandle takeDamageTimer;
+	FTimerHandle comboTimer;
 	
 	
 	UPROPERTY(EditAnywhere,Category = Component)
@@ -83,6 +86,11 @@ public:
 		UMyUserWidgetCPP* gameplayWidget;
 	UPROPERTY(EditAnywhere,Category = UI)
 		TSubclassOf<UMyUserWidgetCPP> myUserWidgetClass;
+	
+	UPROPERTY(EditAnywhere,Category = Audio)
+		USoundBase* jumpSFX;
+	UPROPERTY(EditAnywhere,Category = Audio)
+		USoundCue* hitSFX;
 		
 	
 	// Called every frame
@@ -109,5 +117,7 @@ public:
 	
 	void ReturnInput();
 	void ReturnCombo();
+	
+	void PlayComboStep(int step);
 	
 };
